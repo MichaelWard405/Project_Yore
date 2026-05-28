@@ -18,8 +18,9 @@ import uvicorn
 # ===================
 batch_size = 32 #Expand values, With larger Data set #16 
 block_size = 128 #512
-max_iters_pretrain = 4000
-max_iters_lora = 4000
+iters = 4000
+max_iters_pretrain = iters 
+max_iters_lora = iters
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 n_embd = 256 #768
@@ -27,7 +28,7 @@ n_head = 4  #6
 n_layer = 8 #12
 dropout = 0.1
 vocab_size = 10000
-steps = 3000
+steps = iters - 1
 
 
 MODEL_PATH = "Neural_Net/my_chatbot_brain.pth"
@@ -199,7 +200,9 @@ else:
         optimizer_base.zero_grad(set_to_none=True)
         loss.backward()
         optimizer_base.step()
-        if iter % steps == 0: print(f"  Base Step {iter} | Loss: {loss.item():.4f}")
+        if iter == 0: print(f"  Base Step: {iter} | Loss: {loss.item():.4f}")
+        if iter == steps // 2: print(f"  Base Step: {iter} | Loss: {loss.item():.4f} | Progress: 50%")
+        if iter == steps: print(f"  Base Step: {iter+1} | Loss: {loss.item():.4f}")
 
     apply_lora_freezing(model)
     optimizer_lora = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=learning_rate)
@@ -211,7 +214,9 @@ else:
         optimizer_lora.zero_grad(set_to_none=True)
         loss.backward()
         optimizer_lora.step()
-        if iter % steps == 0: print(f"  LoRA Step {iter} | Loss: {loss.item():.4f}")#Steps for the LoRA Pass 
+        if iter == 0: print(f"  LoRA Step: {iter} | Loss: {loss.item():.4f}")
+        if iter == steps // 2: print(f"  LoRA Step: {iter} | Loss: {loss.item():.4f} | Progress 50%")
+        if iter == steps: print(f"  Base Step: {iter+1} | Loss: {loss.item():.4f}")
 
     torch.save(model.state_dict(), MODEL_PATH)
     model.eval()
