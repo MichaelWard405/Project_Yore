@@ -45,14 +45,14 @@ def get_whisper_engine(config_key):
             list(test_model.generate_segments(dummy_silence))
             
             LOADED_MODELS[model_name] = test_model
-            print("  -> SUCCESS: AI Engine running on Dedicated GPU Acceleration.")
+            print("  -> SUCCESS: Engine running on Dedicated GPU Acceleration.")
         
         except Exception as gpu_err:
             print(f"  -> GPU/CUDA unavailable or library missing (Error: {gpu_err})")
             print("  -> Rolling over pipeline execution to standard CPU mode...")
             try:
                 LOADED_MODELS[model_name] = WhisperModel(model_name, device="cpu", compute_type="int8")
-                print("  -> SUCCESS: AI Engine running on Universal CPU mode.")
+                print("  -> SUCCESS: Engine running on Universal CPU mode.")
             except Exception as cpu_err:
                 print(f"[ CRITICAL ERROR ] Target device could not launch CPU fallback model: {cpu_err}")
                 raise cpu_err
@@ -191,7 +191,7 @@ def run_live_chunker():
 #   State Crawler
 # =================
 def run_documentation_crawler():
-    start_url = input("\nEnter Base Documentation URL (e.g., https://docs.python.org/3/): ").strip()
+    start_url = input("\nEnter Base Documentation URL: ").strip()
     if not start_url: return
 
     parsed_start = urllib.parse.urlparse(start_url)
@@ -226,7 +226,7 @@ def run_documentation_crawler():
         queue = deque([start_url])
         visited = set()
     
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AI-Dataset-Collector'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Dataset-Collector'}
     pages_scraped = 0
     
     print(f"\n[ CRAWLING ] Operational Window Opened for: {base_domain}")
