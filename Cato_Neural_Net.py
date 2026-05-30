@@ -14,7 +14,7 @@ from pydantic import BaseModel
 import uvicorn
 
 # ===================
-#   HYPERPARAMETERS
+#   HyperParamaters
 # ===================
 batch_size = 32 #Expand values, With larger Data set #16 
 block_size = 128 #512
@@ -40,9 +40,9 @@ NEURAL_FOLDER = "Neural_Net"
 # Threading lock to prevent the model from training and inferencing simultaneously
 model_compute_lock = threading.Lock()
 
-# ========================================
-#   AUTO-DATASET CREATION & VERIFICATION
-# ========================================
+# ===============
+#   Verifcation   
+# ===============
 def verify_datasets():
     if not os.path.exists(NEURAL_FOLDER):
         print(f"[SYSTEM] {NEURAL_FOLDER} not found. Generating {NEURAL_FOLDER}")
@@ -62,9 +62,9 @@ def verify_datasets():
 
 verify_datasets()
 
-# ==========================================
-#  TOKENIZER ARCHITECTURE
-# ==========================================
+# ============
+#  Tokenizer
+# ============
 use_existing_bpe = False
 if os.path.exists(TOKENIZER_PATH):
     choice = input(f"Found existing '{TOKENIZER_PATH}'. Load it? (y/n): ").strip().lower()
@@ -85,7 +85,6 @@ vocab_size = tokenizer.get_vocab_size()
 encode = lambda s: tokenizer.encode(s).ids
 decode = lambda l: tokenizer.decode(l)
 
-# Read and vectorize baseline contents
 with open(PRETRAIN_FILE, 'r', encoding='utf-8') as f: data_pretrain = torch.tensor(encode(f.read()), dtype=torch.long)
 with open(LORA_FILE, 'r', encoding='utf-8') as f: data_lora = torch.tensor(encode(f.read()), dtype=torch.long)
 
@@ -95,9 +94,9 @@ def get_batch(data_source):
     y = torch.stack([data_source[i+1:i+block_size+1] for i in ix])
     return x.to(device), y.to(device)
 
-# ==========================================
-#  NEURAL NETWORK WITH INTEGRATED LORA
-# ==========================================
+# =====================================
+#   Neural Net And LoRA InterGrations
+# =====================================
 class LoRALinear(nn.Module):
     def __init__(self, in_features, out_features, bias=False, r=4, lora_alpha=8):
         super().__init__()
@@ -179,9 +178,9 @@ class ChatbotModel(nn.Module):
 
 model = ChatbotModel().to(device)
 
-# ==========================================
-#  RETRAINING & INITIALIZATION CHOICES
-# ==========================================
+# ================
+#   INIT Choices 
+# ================
 should_train = True
 if os.path.exists(MODEL_PATH):
     train_choice = input(f"Found existing weights file '{MODEL_PATH}'. Retrain model parameters? (y/n): ").strip().lower()
@@ -222,9 +221,9 @@ else:
     model.eval()
     print(f"[ SYSTEM ] Training complete. New parameters written to '{MODEL_PATH}'.")
 
-# ==========================================
-#  CENTRAL INFERENCE LOGIC Engine
-# ==========================================
+# ==========================
+#   Interface Logic Engine
+# ==========================
 def run_model_inference(user_text: str):
     """Feeds text to the transformer model, logs interactions, and parses JSON actions."""
     formatted_input = f"User: {user_text}\nBot:"
@@ -235,11 +234,8 @@ def run_model_inference(user_text: str):
         
     bot_reply = decode(out_tokens)[len(formatted_input):].split('\n')[0].strip()
     
-    # Track the raw interaction for future continuous learning calls
     with open("live_history.txt", "a", encoding="utf-8") as f:
         f.write(f"User: {user_text}\nBot: {bot_reply}\n\n")
-        
-    # Execute structural parsing for actions
     command_match = re.search(r'(\{.*?\})', bot_reply)
     action_dispatched = None
     if command_match:
@@ -255,9 +251,9 @@ def run_model_inference(user_text: str):
         
     return spoken_response, action_dispatched, bot_reply
 
-# ==========================================
-#  ADMINISTRATIVE TOOLSET MANAGEMENT
-# ==========================================
+# ======================
+#   ToolSet Management 
+# ======================
 def swap_lora_personality(target_personality_name):
     filename = f"{target_personality_name}_lora.pth"
     if not os.path.exists(filename):
@@ -297,9 +293,9 @@ def run_evolution_merge():
         open("live_history.txt", "w").close() # Clear temporary historical buffer
     print(">>> SYSTEM: Evolution processing sequence completed. <<<\n")
 
-# ==========================================
-#  PARALLEL CONTROL INTERFACES (CLI & API)
-# ==========================================
+# =================
+#   CLI Interface
+# =================
 app = FastAPI()
 
 class UserMessage(BaseModel):
@@ -342,15 +338,12 @@ def local_terminal_loop():
                 target = input("Enter target personality name (e.g., sassy): ").strip()
                 swap_lora_personality(target)
             continue
-
-        # Process a regular conversation string locally
         spoken, action, _ = run_model_inference(user_input)
         if action:
             print(f"\n  [ ENGINE EVENT ] ---> Action Dispatched: {action} <---")
         print(f"Bot: {spoken}\n")
 
 if __name__ == "__main__":
-    # Fire up the local terminal controller as a parallel background worker
     cli_thread = threading.Thread(target=local_terminal_loop, daemon=True)
     cli_thread.start()
 
