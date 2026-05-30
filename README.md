@@ -1,4 +1,5 @@
 #Project YoRe
+
 Project Yore is a comprehensive framework for building, training, and deploying a customizable, transformer-based chatbot. It features a from-scratch PyTorch implementation with LoRA (Low-Rank Adaptation) for efficient fine-tuning and a powerful data acquisition toolkit for creating robust training datasets from various sources.
 
 The project is split into two primary components:
