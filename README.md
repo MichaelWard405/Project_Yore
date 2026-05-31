@@ -9,7 +9,7 @@ The system is designed to be highly interactive and extensible, allowing users t
 
 1.  **`Data_Collector.py` (Unified Data Acquisition Engine):** A powerful command-line tool for gathering text data from multiple sources. It can transcribe video/audio from YouTube and Twitch, record and transcribe live streams, and perform deep crawls of documentation websites to build datasets.
 
-2.  **`Cato_Neural_Net.py` (AI Core):** A transformer-based chatbot built with PyTorch. It features Low-Rank Adaptation (LoRA) for efficient fine-tuning and personality-swapping. The model can be trained on custom datasets, learn from live conversations, and expose a FastAPI endpoint for integration with games or other software.
+2.  **`Cato_Neural_Net.py` (Neural Net Core):** A transformer-based chatbot built with PyTorch. It features Low-Rank Adaptation (LoRA) for efficient fine-tuning and personality-swapping. The model can be trained on custom datasets, learn from live conversations, and expose a FastAPI endpoint for integration with games or other software.
 
 3.  **`Master_Interface.py` (Terminal Multiplexer):** A Textual-based Terminal User Interface (TUI) that acts as a central control panel. It allows you to run, monitor, and interact with multiple instances of the data collector and neural network in a dynamic, auto-scaling grid of panels.
 
