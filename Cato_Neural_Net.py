@@ -45,6 +45,7 @@ model_compute_lock = threading.Lock()
 # ===============
 def verify_datasets():
     if not os.path.exists(NEURAL_FOLDER):
+        os.makedirs(NEURAL_FOLDER, exist_ok=True)
         print(f"[SYSTEM] {NEURAL_FOLDER} not found. Generating {NEURAL_FOLDER}")
     if not os.path.exists(PRETRAIN_FILE):
         print(f"[ SYSTEM ] '{PRETRAIN_FILE}' not found. Generating default text...")
