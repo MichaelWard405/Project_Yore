@@ -21,7 +21,7 @@ class ScriptPanel(Vertical):
     def compose(self) -> ComposeResult:
         options = [(f, f) for f in self.script_files]
         
-        yield Label(f"📦 Pipeline Slot #{self.panel_num}", id="panel-title")
+        yield Label(f"Matrix #{self.panel_num}", id="panel-title")
         yield Select(options, prompt="Select Script...", id="script-selector")
         
         with Horizontal(id="controls"):
@@ -145,7 +145,7 @@ class ScriptPanel(Vertical):
 # ======================
 class MasterInterfaceApp(App):
     
-    TITLE = "PROJECT YORE: GRUVBOX WRAPPING MATRIX"
+    TITLE = "PROJECT YORE: MASTER INTERFACE MATRIX"
     theme = "gruvbox"
     ENABLE_COMMAND_PALETTE = False
     
