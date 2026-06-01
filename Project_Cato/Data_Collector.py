@@ -5,6 +5,7 @@ import time
 import json
 import subprocess
 import urllib.parse
+import tempfile
 from datetime import datetime
 from collections import deque
 
@@ -13,14 +14,11 @@ from faster_whisper import WhisperModel
 import requests
 from bs4 import BeautifulSoup
 
-# ==================
-#   Congfig Values
-# ==================
+# =================
+#   Config Values
+# =================
 BASE_DIR = "Data_Collection"
-TEMP_DIR = os.path.join(BASE_DIR, "temp_downloads")
-
 os.makedirs(BASE_DIR, exist_ok=True)
-os.makedirs(TEMP_DIR, exist_ok=True)
 
 CONFIG = {
     "max_pages": 50,                  # Max pages for documentation crawler per session run
@@ -64,71 +62,65 @@ def sanitize_name(text):
         return "Unknown"
     return re.sub(r'[\\/*?:"<>|]', "", str(text)).replace(" ", "_")
 
-# ============================
-#       Video Transcriber
-# ============================
+# =====================
+#   Video Transcriber
+# =====================
 def run_media_scraper():
     url = input("\nEnter YouTube/Twitch Video or VOD URL: ").strip()
     if not url: return
 
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': os.path.join(TEMP_DIR, '%(id)s.%(ext)s'),
-        'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}],
-        'noplaylist': True, 
-        'quiet': True,
-        'remote_components': ['ejs:github']
-    }
-    
-    wav_path = None
-    try:
-        print(f"\n[ CONNECTING ] Interrogating media link via yt-dlp...")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            
-            extractor = info.get("extractor_key", "").lower()
-            platform = "Youtube" if "youtube" in extractor else "Twitch"
-            channel = sanitize_name(info.get("uploader") or info.get("channel") or "Unknown_Channel")
-            
-            destination_dir = os.path.join(BASE_DIR, f"{platform}_{channel}")
-            os.makedirs(destination_dir, exist_ok=True)
-            
-            wav_path = os.path.join(TEMP_DIR, f"{info.get('id')}.wav")
-            if not os.path.exists(wav_path):
-                print("[ ERROR ] Audio capture layout missing.")
-                return
-            
-            whisper_engine = get_whisper_engine("whisper_vod_model")
-            print(f"[ TRANSCRIBING ] Processing audio tracking for: '{info.get('title')}'...")
-            
-            segments, _ = whisper_engine.transcribe(wav_path, beam_size=5, vad_filter=True)
-            
-            safe_title = sanitize_name(info.get('title', 'Untitled_Video'))
-            out_file = os.path.join(destination_dir, f"{safe_title}.txt")
-            
-            with open(out_file, "w", encoding="utf-8") as f:
-                for segment in segments:
-                    clean_text = segment.text.strip()
-                    if clean_text:
-                        print(f"  [{segment.start:.1f}s] {clean_text}")
-                        f.write(clean_text + "\n")
-            
-            print(f"\n>>> SUCCESS: Saved transcript document to: {out_file} <<<")
-            
-    except Exception as e:
-        print(f"\n[ ERROR ] Media pipeline failed: {e}")
+    # Creates a secure temporary environment that auto-destructs when done
+    with tempfile.TemporaryDirectory() as safe_temp_dir:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(safe_temp_dir, '%(id)s.%(ext)s'),
+            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}],
+            'noplaylist': True, 
+            'quiet': True,
+            'remote_components': ['ejs:github']
+        }
         
-    finally:
-        if wav_path and os.path.exists(wav_path):
-            print("[ CLEANUP ] Safely removing temporary audio file tracking elements...")
-            try:
-                os.remove(wav_path)
-            except Exception as ce:
-                print(f"[ WARNING ] Temp file purge failed: {ce}")
+        try:
+            print(f"\n[ CONNECTING ] Interrogating media link via yt-dlp...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                
+                extractor = info.get("extractor_key", "").lower()
+                platform = "Youtube" if "youtube" in extractor else "Twitch"
+                channel = sanitize_name(info.get("uploader") or info.get("channel") or "Unknown_Channel")
+                
+                destination_dir = os.path.join(BASE_DIR, f"{platform}_{channel}")
+                os.makedirs(destination_dir, exist_ok=True)
+                
+                wav_path = os.path.join(safe_temp_dir, f"{info.get('id')}.wav")
+                if not os.path.exists(wav_path):
+                    print("[ ERROR ] Audio capture layout missing.")
+                    return
+                
+                whisper_engine = get_whisper_engine("whisper_vod_model")
+                print(f"[ TRANSCRIBING ] Processing audio tracking for: '{info.get('title')}'...")
+                
+                segments, _ = whisper_engine.transcribe(wav_path, beam_size=5, vad_filter=True)
+                
+                safe_title = sanitize_name(info.get('title', 'Untitled_Video'))
+                out_file = os.path.join(destination_dir, f"{safe_title}.txt")
+                
+                with open(out_file, "w", encoding="utf-8") as f:
+                    for segment in segments:
+                        clean_text = segment.text.strip()
+                        if clean_text:
+                            print(f"  [{segment.start:.1f}s] {clean_text}")
+                            f.write(clean_text + "\n")
+                
+                print(f"\n>>> SUCCESS: Saved transcript document to: {out_file} <<<")
+                
+        except Exception as e:
+            print(f"\n[ ERROR ] Media pipeline failed: {e}")
+        print("[ CLEANUP ] Secure temp space destroyed.")
 
-# =======================
-#     Stream Chunker
-# =======================
+# ==================
+#   Stream Chunker
+# ==================
 def run_live_chunker():
     url = input("\nEnter Live YouTube or Twitch Stream URL: ").strip()
     if not url: return
@@ -156,36 +148,42 @@ def run_live_chunker():
     master_transcript = os.path.join(session_dir, "master_transcript.txt")
     
     print(f"\n[ RECORDING ] Connected successfully!")
-    print(f"[ STORAGE ] Retaining .wav chunks ({CONFIG['chunk_duration']}s slices) inside: {session_dir}")
+    print(f"[ STORAGE ] Transcript securely writing to: {session_dir}")
     print("Press Ctrl+C to stop recording safely.\n")
     
     whisper_engine = get_whisper_engine("whisper_live_model")
     chunk_idx = 1
     
-    try:
-        while True:
-            chunk_file = os.path.join(session_dir, f"chunk_{chunk_idx:03d}.wav")
-            
-            ffmpeg_cmd = [
-                'ffmpeg', '-y', '-i', raw_stream_url, '-t', str(CONFIG['chunk_duration']), 
-                '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', 
-                '-loglevel', 'quiet', chunk_file
-            ]
-            subprocess.run(ffmpeg_cmd, check=True)
-            
-            segments, _ = whisper_engine.transcribe(chunk_file, beam_size=5)
-            with open(master_transcript, "a", encoding="utf-8") as f:
-                for segment in segments:
-                    clean_text = segment.text.strip()
-                    if clean_text:
-                        print(f"  [{datetime.now().strftime('%H:%M:%S')}] {clean_text}")
-                        f.write(clean_text + "\n")
-            chunk_idx += 1
-            
-    except KeyboardInterrupt:
-        print(f"\n[ SYSTEM ] Live capture processing loop terminated cleanly.")
-    except subprocess.CalledProcessError:
-        print("\n[ DISCONNECTED ] Stream feed terminated or lost link signal.")
+    with tempfile.TemporaryDirectory() as safe_temp_dir:
+        try:
+            while True:
+                chunk_file = os.path.join(safe_temp_dir, f"chunk_{chunk_idx:03d}.wav")
+                
+                ffmpeg_cmd = [
+                    'ffmpeg', '-y', '-i', raw_stream_url, '-t', str(CONFIG['chunk_duration']), 
+                    '-vn', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', 
+                    '-loglevel', 'quiet', chunk_file
+                ]
+                subprocess.run(ffmpeg_cmd, check=True)
+                
+                segments, _ = whisper_engine.transcribe(chunk_file, beam_size=5)
+                with open(master_transcript, "a", encoding="utf-8") as f:
+                    for segment in segments:
+                        clean_text = segment.text.strip()
+                        if clean_text:
+                            print(f"  [{datetime.now().strftime('%H:%M:%S')}] {clean_text}")
+                            f.write(clean_text + "\n")
+                            
+                if os.path.exists(chunk_file):
+                    os.remove(chunk_file)
+                    
+                chunk_idx += 1
+                
+        except KeyboardInterrupt:
+            print(f"\n[ SYSTEM ] Live capture processing loop terminated cleanly.")
+        except subprocess.CalledProcessError:
+            print("\n[ DISCONNECTED ] Stream feed terminated or lost link signal.")
+        print("[ CLEANUP ] Erasing unhandled temporary live chunk sequences...")
 
 # =================
 #   State Crawler
@@ -335,9 +333,9 @@ def run_settings_menu():
         elif choice == "6":
             break
 
-# ================
+# =================
 #   Control Panel
-# ================
+# =================
 if __name__ == "__main__":
     while True:
         print("\n=======================================================")
@@ -357,4 +355,4 @@ if __name__ == "__main__":
         elif main_choice == "4": run_settings_menu()
         elif main_choice == "5": 
             print("\nShutting down pipeline components safely.")
-            break
+            break 
