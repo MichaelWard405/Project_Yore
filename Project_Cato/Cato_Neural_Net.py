@@ -16,18 +16,18 @@ import uvicorn
 # ===================
 #   HyperParamaters
 # ===================
-batch_size = 32 #Expand values, With larger Data set #16 
-block_size = 128 #512
-iters = 4000
+batch_size = 16 #Expand values, With larger Data set #16 
+block_size = 256 #512
+iters = 5000
 max_iters_pretrain = iters 
 max_iters_lora = iters
 learning_rate = 3e-4
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-n_embd = 256 #768
+n_embd = 384 #768
 n_head = 4  #6
 n_layer = 8 #12
 dropout = 0.1
-vocab_size = 10000
+vocab_size = 32000
 steps = iters - 1
 
 
