@@ -21,7 +21,8 @@ MASTER_DEPENDENCIES = [
     "requests", 
     "beautifulsoup4", 
     "numpy",
-    "textual"
+    "textual",
+    "pypdf"
 ]
 
 #===========================
