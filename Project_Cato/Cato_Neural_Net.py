@@ -7,7 +7,6 @@ import torch
 import threading
 import warnings
 import logging
-
 from torch.fx.node import Target
 import uvicorn
 import torch.nn as nn
@@ -20,7 +19,6 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_training
-
 #===================================
 #  Warning And Logging Suppression
 #===================================
@@ -30,7 +28,6 @@ warnings.filterwarnings("ignore")
 logging.getLogger("transformers").setLevel(logging.ERROR)
 logging.getLogger("peft").setLevel(logging.ERROR)
 transformers_logging.set_verbosity_error()
-
 #=====================
 #  Environment Setup
 #=====================
@@ -40,17 +37,14 @@ MEMORIES_DIR = "Memories"
 PERSONALITY_DIR = os.path.join(NEURAL_FOLDER, "Personalities")
 LOCAL_MODEL_DIR = os.path.join(NEURAL_FOLDER, "Local_Model")
 CONTEXT_DIR = os.path.join(NEURAL_FOLDER, "Context")
-
 #[Data Collection Paths]
 DATA_COLLECTION_DIR = "Data_Collection"
 CLEAN_DATA = os.path.join(DATA_COLLECTION_DIR, "Clean_Data")
 BIN_TRANSCRIPTS = os.path.join(DATA_COLLECTION_DIR, "Binary_Transcripts")
-
 #[Custom Model File/Paths][Due to Change]
 MODEL_PATH = os.path.join(PERSONALITY_DIR, "custom_base.pth")
 CUSTOM_LORA_PATH = os.path.join(PERSONALITY_DIR, "custom_lora.jsonl")
 TOKENIZER_PATH = os.path.join(NEURAL_FOLDER, "custom_bpe.json")
-
 #[Redundancy]
 def redundant_enviroment():
     for directory in [NEURAL_FOLDER, MEMORIES_DIR, PERSONALITY_DIR, LOCAL_MODEL_DIR, CONTEXT_DIR, DATA_COLLECTION_DIR, CLEAN_DATA, BIN_TRANSCRIPTS]:
@@ -70,7 +64,6 @@ n_head = 12
 n_layer = 12
 dropout = 0.1
 device = "cuda" if torch.cuda.is_available() else "cpu"
-
 #[Global State]
 model_compute_lock = threading.Lock()
 MODEL_MODE = "CATO"
@@ -80,7 +73,6 @@ custom_model = None
 custom_tokenizer = None
 vocab = 32000
 TRUE_TEXT = False
-
 #=================
 #  Memory System
 #=================
@@ -119,34 +111,24 @@ class MemoryManager:
             emos = " | ".join(user_data.get('Emotions', [])) or "None"
             return f"Location: {location_matrix} | User Relationship: {user_data.get('Relationship')} | Recent Memories: {mems} | Emotions Towards User: {emos}"
         except Exception as e:
-            print(f"[ERROR]\n[Memory/Emotion Read Error] {e}")#[Error Context Logger]
             return"[Systems Context Online]"
 #[Append User Context]
-    def update_interaction(self, person, user_text, reply_text):
+    def update_interaction(self, person, mem_text=None, emo_text=None):
         try:
-            if not user_text.strip(): return
             with open(self.people_matrix, 'r', encoding = 'utf-8') as f:
                 data = json.load(f)
             if not isinstance(data, dict): data = {}
             if person not in data:
                 data[person] = {"Relationship": "Acquaintance", "Memories": [], "Emotions": []}
-    #[Append User Memories & Emotions]
-            mems_match = re.search(r'\{"Memories"\s*:\s*"([^"]+)"\}', reply_text)
-            emos_match = re.search(r'\{"Emotions"\s*:\s*"([^"]+)"\}', reply_text)
-        #[Extractions]
-            extracted_mems = mems_match.group(1) if mems_match else f"Met with {person}"
-            extracted_emos = emos_match.group(1) if emos_match else "Neural"
-        #[Memory Append]
+            extracted_mems = mem_text if mem_text else f"Met with {person}"
+            extracted_emos = emo_text if emo_text else "Neutral"
             data[person]["Memories"].append(extracted_mems)
-        #[Emotion Append]
             data[person]["Emotions"] = [extracted_emos]
-
             with open(self.people_matrix, 'w', encoding = 'utf-8') as f:
                 json.dump(data, f, indent = 4)
         except Exception as e:
-            print(f"[ERROR]\n[Memory/Emotion Write Error] {e}")#[Error Context Logger]
+            pass
 memory_manager = MemoryManager()
-
 #========================
 #  Architectural layers
 #========================
@@ -165,7 +147,6 @@ class LoRALinear(nn.Module):
         base_out = self.linear(x)
         lora_out = (self.dropout(x) @ self.lora_A @ self.lora_B) * self.scaling
         return base_out + lora_out
-
 class Head(nn.Module):
 #[Head Initialization]
     def __init__(self, head_size):
@@ -183,7 +164,6 @@ class Head(nn.Module):
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = F.softmax(wei, dim=-1)
         return self.dropout(wei @ v)
-
 class MultiHeadAttention(nn.Module):
 #[Multi-Head Initialization]
     def __init__(self, num_heads, head_size):
@@ -192,14 +172,12 @@ class MultiHeadAttention(nn.Module):
         self.proj = nn.Linear(num_heads * head_size, n_embd)
         self.dropout = nn.Dropout(dropout)
     def forward(self, x): return self.dropout(self.proj(torch.cat([h(x) for h in self.heads], dim=-1)))
-
 class FeedForward(nn.Module):
 #[Feed Foward Initialization]
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(nn.Linear(n_embd, 4 * n_embd), nn.ReLU(), nn.Linear(4 * n_embd, n_embd), nn.Dropout(dropout))
     def forward(self, x): return self.net(x)
-
 class Block(nn.Module):
 #[Transformer Block Initialization]
     def __init__(self, n_embd, n_head):
@@ -211,7 +189,6 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(n_embd)
 #[Residual Block Pass]
     def forward(self, x): return x + self.sa(self.ln1(x)) + self.ffwd(self.ln2(x))
-
 class CustomModel(nn.Module):
 #[Model Initialization]
     def __init__(self, vocab_size):
@@ -251,7 +228,6 @@ class CustomModel(nn.Module):
             probs = F.softmax(logits[:, -1, :], dim=-1)
             idx = torch.cat((idx, torch.multinomial(probs, num_samples=1)), dim=1)
         return idx
-
 #=============================
 #  DataSet Loading Utilities
 #=============================
@@ -278,7 +254,6 @@ def get_jsonl_data(filepath, encode_func):
                 try: tokens.extend(encode_func(json.loads(line)["text"] + "\n"))
                 except: pass
     return torch.tensor(tokens, dtype = torch.long)
-
 #================================
 #  Selection Menu's & Ecosystem
 #================================
@@ -293,7 +268,6 @@ ecosystem_choice = input("Select An Option: ").strip()
 if ecosystem_choice == "1":
     MODEL_MODE = "CATO"
     if not os.path.exists(LOCAL_MODEL_DIR) or len(os.listdir(LOCAL_MODEL_DIR)) == 0:
-        print(f"[ERROR] Base Model Missing From {LOCAL_MODEL_DIR}")#[Error Context Logger]
         exit()
     print("\n=============================")
     print("     Cato Operational Mode     ")
@@ -304,7 +278,6 @@ if ecosystem_choice == "1":
     print("===============================")
     local_mode = input("Select a Mode: ").strip()
 #[Configure 4-Bit Quantization]
-    print("\n[CATO] Loading 4-bit FrameWork Parameters Cleanly")
     bnb_config = BitsAndBytesConfig(
         load_in_4bit = True,
         bnb_4bit_compute_dtypes=torch.bfloat16,
@@ -324,27 +297,21 @@ if ecosystem_choice == "1":
     #[Mode 1: Boot Base Model]
     if local_mode == "1":
         local_model = base_model
-        print("[CATO] Base Parameters Online")
-        print("[CATO] Base Model Live")
     #[Mode 2: Boot With LoRA Adapter]
     elif local_mode == "2":
         adapters = [f for f in os.listdir(CLEAN_DATA) if os.path.isdir(os.path.join(CLEAN_DATA, f))]
         if not adapters:
-            print("[ERROR] No LoRA Adapters Found")#[Error Context Logger]
-            print("[CATO] Using Base Mode")
             local_model = base_model
         else:
             print("\nAvailiable Adapters:")
             for i, name in enumerate(adapters, 1): print(f"[{i}] {name}")
             try: target = os.path.join(CLEAN_DATA, adapters[int(input("Selection: ").strip()) - 1])
             except: target = os.path.join(CLEAN_DATA, adapters[0])
-            print(f"[PEFT] Injecting weights from {target}...")
             local_model = PeftModel.from_pretrained(base_model, target)
     #[Mode 3: Train New LoRA Adapter]
     elif local_mode == "3":
         jsonls = [f for f in os.listdir(CLEAN_DATA) if f.endswith(".jsonl")]
         if not jsonls:
-            print("[ERROR] No '.jsonl' Files found for Training")#[Error Context Logger]
             exit()
         print("\n[CATO] Available Datasets:")
         for i, name in enumerate(jsonls, 1):print(f" [{i}] {name}")
@@ -353,14 +320,12 @@ if ecosystem_choice == "1":
 #[Prepare for Quantized Training]
         torch.cuda.empty_cache()
         base_model = prepare_model_for_kbit_training(base_model)
-        base_model.gradient_checkpoiting_enable()
 #[Configure Adapter Topography]
         peft_config = LoRAConfig(
             r = 16, lora_alpha = 32, target_modules = ["q_proj", "v_proj"],
             lora_dropout = 0.05, bias = "none", task_type = "CASUAL_LM"
         )
         local_model = get_peft_model(base_model, peft_config)
-        print(f"\n[CATO] [TRAIN] Synchronizing Adapter Matrices")
         encoded_inputs = []
         with open(target_data, 'r', encoding = 'utf-8') as f:
             for line in f:
@@ -369,7 +334,7 @@ if ecosystem_choice == "1":
                     except: pass
         local_model.train()
         optimizer = torch.optim.AdamW(local_model.parameters(), lr = learning_rate)
-        scalar = torch.cuda.amp.GradScaler()
+        scaler = torch.cuda.amp.GradScaler()
         local_train_batch_size = 2
 #[Local LoRA Training Loop]
         for step in range(max_iters_LoRA):
@@ -388,7 +353,6 @@ if ecosystem_choice == "1":
             if step % 100 == 0: print(f"Step {step:04d} | Adapter Loss: {loss.item():.4f}")
         out_dir = os.path.join(CLEAN_DATA, f"[CATO] Adapter_{int(datetime.now().timestamp())}")
         local_model.save_pretrained(out_dir)
-        print(f"[CATO] [PEFT] LoRA weights saved to {out_dir}")
         local_model.eval()
 #[Custom Model Ecosystem Branch]
 elif ecosystem_choice == "2":
@@ -398,7 +362,6 @@ elif ecosystem_choice == "2":
         custom_tokenizer = Tokenizer.from_file(TOKENIZER_PATH)
         custom_vocab_size = custom_tokenizer.get_vocab_size()
     else:
-        print("[ERROR] BPE Tokenizer File missing")#[Error Context Logger]
         exit()
     custom_model = CustomModel(custom_vocab_size).to(device)
 #[Operational Menu]
@@ -410,24 +373,18 @@ elif ecosystem_choice == "2":
     print(" [3] Fine-Tune LoRA Personality")
     print("====================================")
     c_mode = input("Select A Mode: ").strip().upper()
-    #[Mode 1: Boot Model]
     if c_mode in ["1", "3"]:
         if os.path.exists(MODEL_PATH):
             custom_model.load_state_dict(torch.load(MODEL_PATH, map_location = device), strict = False)
             if os.path.exists(CUSTOM_LORA_PATH):
                 custom_model.load_state_dict(torch.load(CUSTOM_LORA_PATH, map_location = device), strict = False)
-        else:
-            print("[ERROR] Base Custom Model Missing")#[Error Context Logger]
-            print("Run Option B First")
-    #[Mode 2: Pretrain Base Brain]
     if c_mode == "2":
         bins = [f for f in os.listdir(BIN_TRANSCRIPTS) if f.endswith(".bin")]
-        if not bins: exit(print('[ERROR] No ".bin" Files Found'))#[Error Context Logger]
+        if not bins: exit()
         print("\nSelect Pretain Base")
         for i, f in enumerate(bins, 1): print(f" [{i}] {f}")
         try: target_bin = os.path.join(BIN_TRANSCRIPTS, bins[int(input("Selection: ").strip()) - 1])
         except: exit()
-        print(f"\n[MODEL] [PRETRAIN] Initializing Foundational base weights...")
         for name, param in custom_model.named_parameters():
             if 'lora_' in name: param.requires_grad = False
             else: param.requires_grad = True
@@ -441,30 +398,26 @@ elif ecosystem_choice == "2":
             opt.step()
             if step % 100 == 0: print(f"  Base Pretrain Step {step:04d} | Loss: {loss.item():.4f}")
         torch.save(custom_model.state_dict(), MODEL_PATH)
-        print(f"[SUCCESS] Base Model Saved")
-    #[Mode 3: Fine-Tune LoRA Personality]
     elif c_mode == "3":
         jsonls = [f for f in os.listdir(CLEAN_DATA) if f.endswith(".jsonl")]
-        if not jsonls: exit(print('[ERROR] No ".jsonl" Files Found'))
+        if not jsonls: exit()
         print("\nSelect Fine-Tune Data:")
         for i, f in enumerate(jsonls, 1): print(f" [{i}] {f}")
         try: target_data = os.path.join(CLEAN_DATA, jsonls[int(input("Selection: ").strip()) - 1])
         except: exit()
-        print(f"\n[MODEL] [LoRA-Tune] Freezing Base Weights And Embedding Personality...")
         custom_model.freeze_base_for_lora()
         opt_lora = torch.optim.AdamW(filter(lambda p: p.requires_grad, custom_model.parameters()), lr = learning_rate)
         encoding_func = lambda s: custom_tokenizer.encode(s).ids
-        lora_tensor = logging.getLogger(target_data, encode_func)
+        lora_tensor = get_jsonl_data(target_data, encoding_func)
         if len(lora_tensor) > block_size:
             for step in range(max_iters_LoRA):
                 xb, yb = get_batch(lora_tensor, "tensor")
-                logits, loss = custom_model, "tensor"
+                logits, loss = custom_model(xb, targets = yb)
                 opt_lora.zero_grad(set_to_none = True)
                 loss.backward()
                 opt_lora.step()
                 if step % 100 == 0: print(f"  LoRa Step {step:04d} | Loss: {loss.item():.4f}")
         torch.save(custom_model.state_dict(), CUSTOM_LORA_PATH)
-        print(f"\n[SUCCESS] Custom LoRA Adaptions Saved")
     custom_model.eval()
 #====================
 #  Inference Engine
@@ -477,11 +430,13 @@ def run_model_inference(user_text: str, current_user: str = "Default", is_launch
             CONTEXT_FILE = os.path.join(CONTEXT_DIR, "Context.txt")
             with open(CONTEXT_FILE, 'r', encoding = 'utf-8') as f:
                 contxt = f.read()
-                inputs = local_tokenizer(contxt, return_tensors = "pt").to(device)
-                with torch.no_grad():
-                    outputs = local_model.generate(**inputs, max_new_tokens = 150, pad_token_id = local_tokenizer.eos_token_id)
-                input_length = inputs['input_ids'].shape[1]
-                raw_reply = local_tokenizer.decode(outputs[0][input_length:], skip_special_tokens = True).strip()
+            contxt = contxt.replace("{current_user}", current_user)
+            matrix_context = f"{contxt}\n\n[System Matrix Context]: {context_str}\n\n{current_user}: {eval_text}\nCato:"
+            inputs = local_tokenizer(matrix_context, return_tensors = "pt").to(device)
+            with torch.no_grad():
+                outputs = local_model.generate(**inputs, max_new_tokens = 150, pad_token_id = local_tokenizer.eos_token_id)
+            input_length = inputs['input_ids'].shape[1]
+            raw_reply = local_tokenizer.decode(outputs[0][input_length:], skip_special_tokens = True).strip()
         else:
             contxt = f"System Context: The User is {current_user}, {context_str}\nUser: {eval_text}\nCato:"
             encoded_contxt = custom_tokenizer.encode(contxt).ids
@@ -489,19 +444,24 @@ def run_model_inference(user_text: str, current_user: str = "Default", is_launch
             with torch.no_grad():
                 out_tokens = custom_model.generate(context, max_new_tokens = 150)[0].tolist()
             raw_reply = custom_tokenizer.decode(out_tokens)[len(contxt):].strip()
-            if "\nUser" in raw_reply:
-                raw_reply = raw_reply.split("\nUser")[0].strip()
         reply = re.sub(r"<\|.*?\|>", "", raw_reply).strip()
-#[Check Actions]
-        action_match = re.search(r"\{Action:\s*(.*?)}", reply, re.IGNORECASE)
-        action = action_match.group(1).strip() if action_match else None
-        if action: reply = re.sub(r"\{Action:\s*.*?}", "", reply, flags = re.IGNORECASE).strip()
+        truncation_pattern = re.compile(rf"(\n{current_user}:|\nUser:|{current_user}:|User:)", re.IGNORECASE)
+        match = truncation_pattern.search(reply)
+        if match:
+            reply = reply[:match.start()].strip()
+        #[Extract the Actions]
+        action_match = re.search(r"\{Action:\s*(.*?)}|\{\"action\"\s*:\s*\"(.*?)\"}", reply, re.IGNORECASE)
+        action = (action_match.group(1) or action_match.group(2)).strip() if action_match else None
+        spoken_reply = re.sub(r"\{Action:\s*.*?\}|\{\"action\"\s*:\s*\".*?\"\}", "", reply, flags = re.IGNORECASE)
+        spoken_reply = re.sub(r"\{\"Memories\"\s*:\s*\".*?\"\}", "", spoken_reply, flags = re.IGNORECASE)
+        spoken_reply = re.sub(r"\{\"Emotions\"\s*:\s*\".*?\"\}", "", spoken_reply, flags = re.IGNORECASE)
+        spoken_reply = re.sub(r"Note:.*", "", spoken_reply, flags = re.IGNORECASE)
+        spoken_reply = re.sub(r'\s+', ' ', spoken_reply).strip()
         if user_text.strip(): memory_manager.update_interaction(current_user, user_text, reply)
-        return reply, action, raw_reply if MODEL_MODE == "CATO" else contxt
+        return spoken_reply, action, raw_reply if MODEL_MODE == "CATO" else contxt
 #=======================
 #  API Gateway Routing
 #=======================
-#[WIP]
 app = FastAPI()
 class UserMessage(BaseModel):
     text:str
@@ -521,7 +481,6 @@ def Local_Terminal_Loop():
         spoken_greeting, action, raw_reply = run_model_inference("", current_user = active_user, is_launch = True)
         print(f"\n[CATO]: {spoken_greeting}\n")
     except Exception as e:
-        print(f"\n[ERROR] Boot Failed")#[Error Context Logger]
         print("[CATO] System Online... Ready")
     while True:
         user_input = input(f"\n{active_user}: ").strip()
@@ -536,17 +495,15 @@ def Local_Terminal_Loop():
             admin_choice = input("Select Choice Index (1 - 3): ").strip()
             if admin_choice == "1":
                 TRUE_TEXT = not TRUE_TEXT
-                print(f">>> [SYSTEM] Debug Visibility Toggled To: {TRUE_TEXT} <<<")
             elif admin_choice == "2":
                 new_user = input("Enter New User Name: ").strip()
                 if new_user:
                     active_user = new_user
-                    print(f'\n>>> [SYSTEM] Swapped Session User To "{active_user}" <<<')
                     spoken_greeting, action, raw_reply = run_model_inference("", current_user = active_user, is_launch = True)
                     print(f"[CATO] {spoken_greeting}\n")
             continue
         spoken, action, raw_reply = run_model_inference(user_input, current_user = active_user)
-        if action: print(f"\n [CATO] [ENGINE] --> Dispatched: {action} <---")
+        if action: print(f"\n[CATO] [ENGINE] --> Dispatched Action: {action} <---")
         print(f"[CATO] {spoken}\n" if not TRUE_TEXT else f"\n [CATO] [RAW] -> {raw_reply}\n[CATO] {spoken}\n")
 if __name__ == "__main__":
     threading.Thread(target = Local_Terminal_Loop, daemon = True).start()
