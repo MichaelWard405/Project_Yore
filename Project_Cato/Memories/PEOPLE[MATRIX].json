@@ -1,0 +1,17 @@
+{
+    "Default": {
+        "Relationship": "Unknown",
+        "Memories": [],
+        "Emotions": []
+    },
+    "Michael": {
+        "Relationship": "Creator",
+        "Memories": [
+            "Met with Michael",
+            "My Creator"
+        ],
+        "Emotions": [
+            "Happy"
+        ]
+    }
+}
