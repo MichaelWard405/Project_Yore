@@ -38,7 +38,7 @@ transformers_logging.set_verbosity_error()
 NEURAL_FOLDER = "Neural_Net"
 MEMORIES_DIR = "Memories"
 PERSONALITY_DIR = os.path.join(NEURAL_FOLDER, "Personalities")
-LOCAL_MODEL_DIR = os.path.join(NEURAL_FOLDER, "Local_model")
+LOCAL_MODEL_DIR = os.path.join(NEURAL_FOLDER, "Local_Model")
 CONTEXT_DIR = os.path.join(NEURAL_FOLDER, "Context")
 
 #[Data Collection Paths]
