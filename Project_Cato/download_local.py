@@ -1,7 +1,7 @@
 import os
 from huggingface_hub import snapshot_download
 
-LOCAL_MODEL_DIR = "./Neural_Net/Local_Models"
+LOCAL_MODEL_DIR = "./Neural_Net/Local_Model"
 os.makedirs(LOCAL_MODEL_DIR, exist_ok=True)
 
 print("Initiating direct raw file transfer from Hugging Face...")
