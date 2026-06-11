@@ -9,8 +9,6 @@ import urllib.request
 PROJECT_ROOT = "Project_Cato"
 MASTER_DIR = os.path.join(PROJECT_ROOT, "Master")
 VENV_DIR = os.path.join(MASTER_DIR, ".venv")
-
-# Unified pipeline dependencies
 MASTER_DEPENDENCIES = [
     "torch", 
     "tokenizers", 
@@ -22,9 +20,14 @@ MASTER_DEPENDENCIES = [
     "beautifulsoup4", 
     "numpy",
     "textual",
-    "pypdf"
+    "pypdf",
+    "llama-cpp-python",
+    "transformers", # Fixed typo from "tranformers"
+    "accelerate",
+    "bitsandbytes",
+    "peft",
+    "unsloth @ git+https://github.com/unslothai/unsloth.git"
 ]
-
 #===========================
 #  Python Files To Install
 #===========================
@@ -45,6 +48,18 @@ PIPELINE_MODULES = {
         "name": "Master Interface",
         "files": {
             "Master_Interface.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Master_Interface.py"
+        }
+    },
+    "4": {
+        "name": "Formatting Server",
+        "files": {
+            "Formatting_Server.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Formatting_Server.py"
+        }
+    },
+    "5": {
+        "name": "download_local.py",
+        "files": {
+            "download_local.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/download_local.py"
         }
     }
 }
@@ -129,21 +144,43 @@ def main():
             dest_path = os.path.join(PROJECT_ROOT, file_name)
             download_file(file_url, dest_path)
 
-    # --- FINALIZATION ---
+    # =====================================
+    #   POST-INSTALL AUTOMATION & CLEANUP
+    # =====================================
     print("\n=======================================================")
-    print("               SYSTEM SETUP COMPLETE                   ")
+    print("           EXECUTING POST-INSTALL SEQUENCE             ")
     print("=======================================================")
-    print(f"Your architecture is ready inside ./{PROJECT_ROOT}\n")
-    print("To run your scripts using the Master Control Interface, activate it with:")
-    
-    if sys.platform == "win32":
-        print(f"  > {os.path.join(PROJECT_ROOT, 'Master', '.venv', 'Scripts', 'activate')}")
+    download_local_path = "download_local.py"
+    if not os.path.exists(download_local_path):
+        download_local_path = os.path.join(PROJECT_ROOT, "download_local.py")
+    if os.path.exists(download_local_path):
+        print("\n[*] Launching download_local.py using the virtual environment...")
+        try:
+            subprocess.run([venv_python, download_local_path], check=True)
+            print("[+] download_local.py completed successfully.")
+            print(f"[*] Deleting {os.path.basename(download_local_path)}...")
+            os.remove(download_local_path)
+        except subprocess.CalledProcessError:
+            print("[ ERROR ] download_local.py failed during execution. Halting sequence.")
+            sys.exit(1)
+        except Exception as e:
+            print(f"[ ERROR ] Could not execute or delete download_local.py: {e}")
     else:
-        print(f"  > source {os.path.join(PROJECT_ROOT, 'Master', '.venv', 'bin', 'activate')}")
-        
-    print("\nOnce activated, execute your scripts directly from the root directory:")
-    print(f"  > cd {PROJECT_ROOT}")
-    print("  > python Master_Interface.py")
+        print("\n[!] download_local.py not found. Skipping execution.")
+    installer_path = os.path.abspath(__file__)
+    print(f"\n[*] Self-destructing installer: {os.path.basename(installer_path)}...")
+    try:
+        os.remove(installer_path)
+    except Exception as e:
+        print(f"[ WARNING ] Could not delete installer file automatically: {e}")
+    master_interface_path = os.path.join(PROJECT_ROOT, "Master_Interface.py")
+    if os.path.exists(master_interface_path):
+        print(f"\n[*] Launching Master_Interface.py...")
+        print("=======================================================\n")
+        os.chdir(PROJECT_ROOT)
+        subprocess.run([venv_python, "Master_Interface.py"])
+    else:
+        print("\n[ ERROR ] Master_Interface.py not found. Cannot launch.")
 
 if __name__ == "__main__":
     main()
