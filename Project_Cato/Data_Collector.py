@@ -196,13 +196,13 @@ def run_bin_compiler():
 
 def run_llm_formatting_pipeline():
     print("\n=======================================================")
-    print("         LLaMA SERVER & FORMATTING PIPELINE            ")
+    print("             Server & FORMATTING PIPELINE            ")
     print("=======================================================")
     
     SERVER_BASE_URL = "http://localhost:5000"
     SERVER_FORMAT_URL = "http://localhost:5000/format"
 
-    boot_choice = input("Launch background LLaMA framework instance? (y/n) [Default: y]: ").strip().lower()
+    boot_choice = input("Launch background Server framework instance? (y/n) [Default: y]: ").strip().lower()
     server_process = None
     if boot_choice != 'n':
         if os.path.exists("Formatting_Server.py"):
@@ -317,7 +317,7 @@ def run_media_scraper():
     except Exception as e: print(f"[ ERROR ] {e}")
     finally:
         if os.path.exists(audio_path): os.remove(audio_path)
-    input("\nPress Enter to return...")
+    input("\nPress Enter to return..."):
 
 def run_live_chunker():
     if yt_dlp is None or WhisperModel is None: return print("[ ERROR ] Subsystem modules missing.")
