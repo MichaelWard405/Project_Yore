@@ -35,19 +35,19 @@ PIPELINE_MODULES = {
     "1": {
         "name": "Neural Net Block",
         "files": {
-            "Cato_Neural_Net.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Cato_Neural_Net.py"
+            "Cato_Neural_Net.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Cato_Neural_Net.py"
         }
     },
     "2": {
         "name": "Data Collection Block",
         "files": {
-            "Data_Collector.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Data_Collector.py"
+            "Data_Collector.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Data_Collector.py"
         }
     },
     "3": {
         "name": "Master Interface",
         "files": {
-            "Master_Interface.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Master_Interface.py"
+            "Master_Interface.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Master_Interface.py"
         }
     },
     "4": {
@@ -60,6 +60,12 @@ PIPELINE_MODULES = {
         "name": "download_local.py",
         "files": {
             "download_local.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/download_local.py"
+        }
+    },
+    "6": {
+        "name": "Context Data Configuration",
+        "files": {
+            "Neural_Net/Context/Context.txt": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Neural_Net/Context/Context.txt"
         }
     }
 }
@@ -142,6 +148,8 @@ def main():
         
         for file_name, file_url in module["files"].items():
             dest_path = os.path.join(PROJECT_ROOT, file_name)
+            # Automatically build nested subdirectories (e.g. Neural_Net/Context/) if they don't exist yet
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             download_file(file_url, dest_path)
 
     # =====================================
@@ -150,9 +158,15 @@ def main():
     print("\n=======================================================")
     print("           EXECUTING POST-INSTALL SEQUENCE             ")
     print("=======================================================")
+    
+    # Store absolute paths before changing working directories
+    installer_path = os.path.abspath(__file__)
+    venv_python = os.path.abspath(venv_python)
+
+    # Move into the project directory immediately so everything runs inside it
+    os.chdir(PROJECT_ROOT)
+
     download_local_path = "download_local.py"
-    if not os.path.exists(download_local_path):
-        download_local_path = os.path.join(PROJECT_ROOT, "download_local.py")
     if os.path.exists(download_local_path):
         print("\n[*] Launching download_local.py using the virtual environment...")
         try:
@@ -167,17 +181,17 @@ def main():
             print(f"[ ERROR ] Could not execute or delete download_local.py: {e}")
     else:
         print("\n[!] download_local.py not found. Skipping execution.")
-    installer_path = os.path.abspath(__file__)
+        
     print(f"\n[*] Self-destructing installer: {os.path.basename(installer_path)}...")
     try:
         os.remove(installer_path)
     except Exception as e:
         print(f"[ WARNING ] Could not delete installer file automatically: {e}")
-    master_interface_path = os.path.join(PROJECT_ROOT, "Master_Interface.py")
+        
+    master_interface_path = "Master_Interface.py"
     if os.path.exists(master_interface_path):
         print(f"\n[*] Launching Master_Interface.py...")
         print("=======================================================\n")
-        os.chdir(PROJECT_ROOT)
         subprocess.run([venv_python, "Master_Interface.py"])
     else:
         print("\n[ ERROR ] Master_Interface.py not found. Cannot launch.")
