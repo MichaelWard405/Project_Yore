@@ -35,25 +35,25 @@ PIPELINE_MODULES = {
     "1": {
         "name": "Neural Net Block",
         "files": {
-            "Cato_Neural_Net.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Cato_Neural_Net.py"
+            "Cato_Neural_Net.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/refs/heads/Project_Yore/Project_Cato/Cato_Neural_Net.py"
         }
     },
     "2": {
         "name": "Data Collection Block",
         "files": {
-            "Data_Collector.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Data_Collector.py"
+            "Data_Collector.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/refs/heads/Project_Yore/Project_Cato/Data_Collector.py"
         }
     },
     "3": {
         "name": "Master Interface",
         "files": {
-            "Master_Interface.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Master_Interface.py"
+            "Master_Interface.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/refs/heads/Project_Yore/Project_Cato/Master_Interface.py"
         }
     },
     "4": {
         "name": "Formatting Server",
         "files": {
-            "Formatting_Server.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Formatting_Server.py"
+            "Formatting_Server.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/refs/heads/Project_Yore/Project_Cato/Formatting_Server.py"
         }
     },
     "5": {
