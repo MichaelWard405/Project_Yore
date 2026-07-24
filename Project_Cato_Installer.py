@@ -59,13 +59,13 @@ PIPELINE_MODULES = {
     "5": {
         "name": "download_local.py",
         "files": {
-            "download_local.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/download_local.py"
+            "download_local.py": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/refs/heads/Project_Yore/Project_Cato/download_local.py"
         }
     },
     "6": {
         "name": "Context Data Configuration",
         "files": {
-            "Neural_Net/Context/Context.txt": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/Project_Yore/Project_Cato/Neural_Net/Context/Context.txt"
+            "Neural_Net/Context/Context.txt": "https://raw.githubusercontent.com/MichaelWard405/Project_Yore/refs/heads/Project_Yore/Project_Cato/Neural_Net/Context/Context.txt"
         }
     }
 }
